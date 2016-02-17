@@ -1,0 +1,52 @@
+#pragma once
+
+#if !TRACKING_NOT_SUPPORTED
+
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+#define MAX_SIZE    512.0f
+
+#define CLIP(x, min, max) MIN(MAX(x, min), max)
+
+namespace cv {
+    struct Vec2 {
+        Vec2(double x, double y) : x(x), y(y) {}
+        double x;
+        double y;
+    };
+}
+
+class OpenCvTrackerBase {
+    public:
+        OpenCvTrackerBase(cv::Vec2 const &initial_center, cv::Vec2 const &tracker_size);
+        OpenCvTrackerBase(cv::Vec2 const &initial_center, cv::Vec2 const &tracker_size, cv::Vec2 const &video_size);
+        virtual ~OpenCvTrackerBase();
+        virtual bool doMatching(const unsigned char *frameData, unsigned int width,
+                                unsigned int height);
+
+        cv::Vec2 const &size() const;
+        cv::Vec2 const &movement() const;
+        cv::Vec2 const &center() const;
+
+        void set_center(cv::Vec2 const &position, cv::Vec2 const &video_size);
+        void set_center(cv::Vec2 const &position);
+    private:
+        void _updateTemplate(unsigned int tplw, unsigned int tplh, unsigned int tplx, unsigned int tply,
+                            const unsigned char *data, unsigned int width, unsigned int height);
+
+        double _getExposureCoeff(cv::Mat const &mat, cv::Rect const &box);
+
+        cv::Mat     _adjustTemplateExposure(double coeff);
+
+        cv::Mat     _tpl;
+        bool        _tplSave;
+        double      _templateExposureCoeff;
+        cv::Vec2    _prev_move;
+        cv::Vec2    _prev_center;
+        cv::Vec2    _size;
+};
+
+#endif
+

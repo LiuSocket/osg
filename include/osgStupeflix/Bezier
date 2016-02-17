@@ -1,0 +1,382 @@
+/*  -*-c++-*-
+ *  Copyright (C) 2010 Stupeflix
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_BEZIER
+#define OSGSTUPEFLIX_BEZIER 1
+
+#include <osgStupeflix/Export>
+#include <osg/Vec2>
+#include <osg/Vec3>
+#include <osg/Vec4>
+#include <math.h>
+#include <vector>
+// #include <algorithm>
+#include <osg/Notify>
+#include <osg/io_utils>
+
+
+namespace osgStupeflix
+{
+    template <class T>
+    OSGSTUPEFLIX_EXPORT class Interpolator
+    {
+    public:
+
+        Interpolator();
+        virtual T interpolate(double l);
+    };
+
+    template <class T>
+    OSGSTUPEFLIX_EXPORT class LinearInterpolator : public Interpolator<T>
+    {
+    public:
+
+        LinearInterpolator(T start, T end):
+          _start(start),
+          _end(end) {
+        }
+
+        T interpolate(double l) const {
+            return _start * (1 - l) + _end * l;
+        }
+
+    protected:
+        T _start;
+        T _end;
+    };
+
+    template <class T>
+    OSGSTUPEFLIX_EXPORT class CubicBezierInterpolator
+    {
+    public:
+
+        CubicBezierInterpolator(T p0, T p1, T p2, T p3) {
+            init(p0, p1, p2, p3);
+        }
+
+        virtual void init(T p0, T p1, T p2, T p3) {
+            _p0 = p0;
+            _p1 = p1;
+            _p2 = p2;
+            _p3 = p3;
+        }
+
+        virtual T interpolate(double l) const {
+            return interpolate_(l);
+        }
+
+    protected:
+        T interpolate_(double l) const {
+            double l2 = l * l;
+            double l3 = l2 * l;
+            double ml = (1 - l);
+            double ml2 = ml * ml;
+            double ml3 = ml2 * ml;
+            return  _p0 * ml3 +  _p1 * 3.0 * ml2 * l + _p2 * 3.0 * ml * l2 + _p3 * l3 ;
+        }
+
+
+        T _p0;
+        T _p1;
+        T _p2;
+        T _p3;
+    };
+
+    typedef CubicBezierInterpolator<float> FloatCubicBezierInterpolator;
+    typedef CubicBezierInterpolator<double> DoubleCubicBezierInterpolator;
+    typedef CubicBezierInterpolator<osg::Vec2> Vec2CubicBezierInterpolator;
+    typedef CubicBezierInterpolator<osg::Vec3> Vec3CubicBezierInterpolator;
+    typedef CubicBezierInterpolator<osg::Vec4> Vec4CubicBezierInterpolator;
+
+    OSGSTUPEFLIX_EXPORT class ReparametrizedBezierInterpolator : public CubicBezierInterpolator<osg::Vec2>
+    {
+    public:
+      ReparametrizedBezierInterpolator(osg::Vec2 p0, osg::Vec2 p1, osg::Vec2 p2, osg::Vec2 p3);
+      virtual void init(osg::Vec2 p0, osg::Vec2 p1, osg::Vec2 p2, osg::Vec2 p3);
+
+      osg::Vec2 interpolate(double l) const;
+
+    private:
+      double angle(double re, double im) const;
+      double cubic_solve(double time) const;
+
+    protected:
+      double _t0;
+      double _t1;
+      double _t2;
+      double _t3;
+      double _a0;
+      double _a1;
+      double _a2;
+      double _a3;
+      double _q0;
+      double _q1;
+      double _q2;
+      double _f0;
+      double _f1;
+    };
+
+
+    template <class T>
+    OSGSTUPEFLIX_EXPORT class EquiCubicBezierInterpolator : public CubicBezierInterpolator<T>
+    {
+    public:
+      EquiCubicBezierInterpolator(T p0, T p1, T p2, T p3, unsigned int steps):
+        CubicBezierInterpolator<T>(p0,p1,p2,p3),
+        _steps(steps)
+      {
+          init(p0,p1,p2,p3);
+      }
+
+      T interpolate(double l) { // const cannot be used as there's a problem on lower_bound with const ...
+          std::vector<osg::Vec2>::iterator low,up;
+
+          osg::Vec2 vl;
+          vl[0] = l;
+          low = lower_bound(_time_mapping.begin(), _time_mapping.end(), vl);
+          unsigned int index = (unsigned int)(low - _time_mapping.begin());
+
+          if (index > 0) {
+              index -= 1;
+          }
+
+          osg::Vec2 d0 = _time_mapping[index];
+
+          if (index != (_time_mapping.size()  - 1)) {
+              index += 1;
+          }
+
+          osg::Vec2 d1 = _time_mapping[index];
+          double interpol = 0.0;
+
+          if (d1[0] != d0[0]) {
+              interpol = (l - d0[0]) / (d1[0] - d0[0]);
+          } else {
+              interpol = 0.0;
+          }
+          double ll = d0[1] * (1 - interpol) + d1[1] * interpol;
+
+          return this->interpolate_(ll);
+      }
+
+      void init(T p0, T p1, T p2, T p3) {
+          if (this->_p0 == p0 &&
+              this->_p1 == p1 &&
+              this->_p2 == p2 &&
+              this->_p3 == p3)
+          {
+              return;
+          }
+
+
+          this->_p0 = p0;
+          this->_p1 = p1;
+          this->_p2 = p2;
+          this->_p3 = p3;
+
+          double mul = 1.0 / (float)(_steps - 1);
+
+          T last = this->_p0;
+          double distance = 0;
+          unsigned int i;
+
+          _time_mapping.resize(_steps);
+          _time_mapping[0] = osg::Vec2(0,0);
+
+          for (i = 1; i < _steps ; i++) {
+              double l = i * mul;
+              T v = this->interpolate_(l);
+              distance += sqrt((v - last).length2());
+              last = v;
+              _time_mapping[i] = osg::Vec2(distance, l);
+          }
+
+          for (i = 1; i < _steps ; i++) {
+              _time_mapping[i][0] /= distance;
+          }
+
+      }
+
+    private:
+      unsigned int _steps;
+      std::vector<osg::Vec2> _time_mapping;
+
+    };
+
+    typedef EquiCubicBezierInterpolator<osg::Vec2> Vec2EquiCubicBezierInterpolator;
+    typedef EquiCubicBezierInterpolator<osg::Vec3> Vec3EquiCubicBezierInterpolator;
+    typedef EquiCubicBezierInterpolator<osg::Vec4> Vec4EquiCubicBezierInterpolator;
+
+  //
+  // VariableSpeed Cubic Bezier Interpolator
+  //
+    template <class T>
+    OSGSTUPEFLIX_EXPORT class VariableSpeedCubicBezierInterpolator : public CubicBezierInterpolator<T>
+    {
+    public:
+      VariableSpeedCubicBezierInterpolator(T p0, T p1, T p2, T p3, osg::Vec2 is0, osg::Vec2 is3,
+                                           unsigned int steps, double duration, int marker):
+        CubicBezierInterpolator<T>(p0,p1,p2,p3),
+        _rbi(osg::Vec2(), osg::Vec2(), osg::Vec2(), osg::Vec2()),
+        _steps(steps)
+      {
+          init(p0,p1,p2,p3,is0,is3,duration,marker);
+      }
+
+      inline double bezier_distance(osg::Vec2 v0, osg::Vec2 v1) {
+          return sqrt((v1 - v0).length2());
+      }
+      inline double bezier_distance(osg::Vec3 v0, osg::Vec3 v1) {
+          return sqrt((v1 - v0).length2());
+      }
+      inline double bezier_distance(osg::Vec4 v0, osg::Vec4 v1) {
+          return sqrt((v1 - v0).length2());
+      }
+      inline double bezier_distance(float v0, float v1) {
+          return fabs(v1 - v0);
+      }
+      inline double bezier_distance(double v0, double v1) {
+          return fabs(v1 - v0);
+      }
+
+      T interpolate(double l) { // const cannot be used as there's a problem on lower_bound with const ...
+          std::vector<osg::Vec2>::iterator low,up;
+
+          double l0 = l;
+          // Find the distance we want to reach at normalized time "l"
+          l= _rbi.interpolate(l)[1];
+
+          osg::Vec2 vl;
+          vl[0] = l;
+          low = lower_bound(_time_mapping.begin(), _time_mapping.end(), vl);
+          unsigned int index = (unsigned int)(low - _time_mapping.begin());
+
+          //          for (int i = 0; i < _time_mapping.size() ; i++) {
+          //              printf("time mapping %f, %f\n", _time_mapping[i][0], _time_mapping[i][1]);
+          //}
+
+
+          if (index > 0) {
+              index -= 1;
+          }
+
+          osg::Vec2 d0 = _time_mapping[index];
+
+          if (index != (_time_mapping.size()  - 1)) {
+              index += 1;
+          }
+
+          osg::Vec2 d1 = _time_mapping[index];
+          double interpol = 0.0;
+
+          if (d1[0] != d0[0]) {
+              //              printf("INTERPOLATE WITH DIFFERENCE %f, %f\n", d1[0], d0[0]);
+              interpol = (l - d0[0]) / (d1[0] - d0[0]);
+          } else {
+              //              printf("INTERPOLATE WITH ZERO DIFFERENCE\n");
+              interpol = 0.0;
+          }
+          double ll = d0[1] * (1 - interpol) + d1[1] * interpol;
+
+          //          printf("got l0 = %f, l %f, ll %f, %d, d0 = %f, %f, d1 = %f, %f, interpol = %f\n", l0, l, ll, index, d0[0], d0[1], d1[0], d1[1], interpol);
+
+          T ret = this->interpolate_(ll);
+
+          osg::notify(osg::INFO) << "ret = " << ret << std::endl;
+
+          return ret;
+      }
+
+      void init(T p0, T p1, T p2, T p3, osg::Vec2 is0, osg::Vec2 is3, double duration,
+                int marker) {
+
+          if (this->_marker == marker)
+          {
+              return;
+          }
+          _marker = marker;
+
+          //          osg::notify(osg::NOTICE) << "got p0=" << p0 << " p1=" << p1 << " p2=" << p2 << " p3=" << p3 << " is0=" << is0 << " is3=" << is3 << std::endl;
+
+          this->_p0 = p0;
+          this->_p1 = p1;
+          this->_p2 = p2;
+          this->_p3 = p3;
+          this->_is0 = is0;
+          this->_is3 = is3;
+          this->_duration = duration;
+
+          double mul = 1.0 / (float)(_steps - 1);
+
+          T last = this->_p0;
+          double distance = 0;
+          unsigned int i;
+
+          //          printf("Resizing to %d\n", _steps);
+          _time_mapping.resize(_steps);
+          _time_mapping[0] = osg::Vec2(0,0);
+
+          for (i = 1; i < _steps ; i++) {
+              double l = i * mul;
+              T v = this->interpolate_(l);
+              double distance_inc = bezier_distance(v, last);
+              distance += distance_inc;
+              last = v;
+              _time_mapping[i] = osg::Vec2(distance, l);
+          }
+
+
+
+          //          osg::notify(osg::NOTICE) << "distance is " << distance << std::endl;
+
+          osg::Vec2 is0_normalized;
+          osg::Vec2 is3_normalized;
+
+          double invDistance = 0.0;
+          if (distance == 0.0) {
+              //              printf("distance is 0\n");
+              invDistance = 1000000000.0;
+          } else {
+              //              printf("distance is not 0 : %f\n", distance);
+              invDistance = 1.0 / distance;
+          }
+          is0_normalized = osg::Vec2(is0[0], is0[0] * is0[1] * duration * invDistance);
+          is3_normalized = osg::Vec2(1.0 - is3[0], 1.0 - is3[0] * is3[1] * invDistance);
+
+          for (i = 0; i < _steps ; i++) {
+              _time_mapping[i][0] *= invDistance;
+              //              osg::notify(osg::NOTICE) << "mapping: " << i << " " << _time_mapping[i] << std::endl;
+          }
+
+
+
+
+          //          osg::notify(osg::NOTICE) << "ISs: " << is0_normalized << " " << is3_normalized << " distance= " << distance << " " << is0 << " " << is3 << std::endl;
+
+          _rbi = ReparametrizedBezierInterpolator(osg::Vec2(0,0), is0_normalized, is3_normalized, osg::Vec2(1,1));
+      }
+
+    private:
+      osg::Vec2f _is0;
+      osg::Vec2f _is3;
+      unsigned int _steps;
+      std::vector<osg::Vec2> _time_mapping;
+      ReparametrizedBezierInterpolator _rbi;
+      double _duration;
+      int _marker;
+    };
+
+    typedef VariableSpeedCubicBezierInterpolator<float> FloatVariableSpeedCubicBezierInterpolator;
+    typedef VariableSpeedCubicBezierInterpolator<double> DoubleVariableSpeedCubicBezierInterpolator;
+    typedef VariableSpeedCubicBezierInterpolator<osg::Vec2> Vec2VariableSpeedCubicBezierInterpolator;
+    typedef VariableSpeedCubicBezierInterpolator<osg::Vec3> Vec3VariableSpeedCubicBezierInterpolator;
+    typedef VariableSpeedCubicBezierInterpolator<osg::Vec4> Vec4VariableSpeedCubicBezierInterpolator;
+
+
+}
+
+#endif

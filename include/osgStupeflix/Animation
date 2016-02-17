@@ -1,0 +1,461 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 1998-2006 Robert Osfield
+ *
+ * This application is open source and may be redistributed and/or modified
+ * freely and without restriction, both in commericial and non commericial applications,
+ * as long as this copyright notice is maintained.
+ *
+ * This application is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*/
+
+#ifndef OSG_STUPEFLIX_ANIMATION
+#define OSG_STUPEFLIX_ANIMATION 1
+
+#include <osgAnimation/Keyframe>
+#include <osgAnimation/Sampler>
+#include <osgAnimation/StackedTransform>
+#include <osg/Uniform>
+#include <osg/MatrixTransform>
+#include <osg/Camera>
+#include <osg/StateAttribute>
+#include <osgStupeflix/VariableSpeedCubicBezier>
+#include <osgStupeflix/Interpolator>
+#include <osgAnimation/Sampler>
+#include <osgAnimation/StackedRotateAxisElement>
+#include <osgAnimation/StackedMatrixElement>
+#include <osgAnimation/StackedQuaternionElement>
+#include <osgAnimation/StackedTranslateElement>
+#include <osgAnimation/StackedScaleElement>
+#include <osgAnimation/StackedTransform>
+#include <cxxabi.h>
+
+
+
+
+namespace osgStupeflix {
+
+
+
+  template <class T>
+  class UniformAnimationCallback : public osg::Uniform::Callback
+  {
+
+  public:
+    virtual osg::Object* cloneType() const {
+//        std::cout << "cloneType" << std::endl;
+        return new UniformAnimationCallback<T>();
+    }
+    virtual osg::Object* clone(const osg::CopyOp& copyop) const {
+//        std::cout << "clone" << std::endl;
+        return new UniformAnimationCallback<T> (*this,copyop);
+    }
+    virtual bool isSameKindAs(const osg::Object* obj) const {
+        bool ret = dynamic_cast<const UniformAnimationCallback<T> *>(obj)!=NULL;
+//        std::cout << "isSameKindAs ret = " <<  ret << std::endl;
+        return ret;
+    }
+
+    virtual const char* libraryName() const {
+//        std::cout << "libraryName" << std::endl;
+        return "osgStupeflix";
+    };
+
+    const char* typeName(float t) const {    return ("UniformAnimationCallback<float>"); }
+    const char* typeName(osg::Vec2f t) const {    return ("UniformAnimationCallback<osg::Vec2f>"); }
+    const char* typeName(osg::Vec3f t) const {    return ("UniformAnimationCallback<osg::Vec3f>"); }
+    const char* typeName(osg::Vec4f t) const {    return ("UniformAnimationCallback<osg::Vec4f>"); }
+    const char* typeName(osg::Matrixf t) const {    return ("UniformAnimationCallback<osg::Matrixf>"); }
+    const char* typeName(osg::Quat t) const {    return ("UniformAnimationCallback<osg::Quat>"); }
+
+    virtual const char* className() const {
+        int status;
+        T t;
+        return typeName(t);
+    }
+
+    /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+    UniformAnimationCallback(const UniformAnimationCallback& animationCallback,
+                             const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
+      _startTime(animationCallback._startTime),
+      _timeStretch(animationCallback._timeStretch)
+    {
+        _sampler = animationCallback._sampler;
+    }
+
+    UniformAnimationCallback():
+      _startTime(0.0),
+      _timeStretch(1.0)
+    { _sampler = NULL;}
+
+    virtual void operator () (osg::Uniform* uniform, osg::NodeVisitor* nv) {
+        if (_sampler.valid()) {
+            double t = nv->getFrameStamp()->getSimulationTime();
+            t = (t - _startTime) * _timeStretch;
+            T value;
+            _sampler->getValueAt(t, value);
+            uniform->set(value);
+	    osg::notify(osg::INFO) << "osgStupeflix: time " << t << " " << value << std::endl;
+        }
+    }
+
+    inline const osgAnimation::TypedSampler<T>* getSampler() const {return _sampler.get();}
+    inline osgAnimation::TypedSampler<T>* getSampler() {return _sampler.get();}
+    inline void setSampler(osgAnimation::TypedSampler<T>* sampler) {_sampler = sampler;}
+
+    inline void setStartAndTimeStretch(float startTime, float timeStretch) {
+        _startTime = startTime;
+        _timeStretch = 1.0 / timeStretch;
+    }
+
+  protected:
+    osg::ref_ptr<osgAnimation::TypedSampler<T> > _sampler;
+    float _startTime;
+    float _timeStretch;
+  };
+
+  void uniformAnimationCallbackSetTimeStretch(osg::Uniform* uniform, float startTime, float timeStretch);
+  void stateSetTimeStretch(osg::StateSet* stateSet, float startTime, float timeStretch);
+
+#define UPDATEMATRIX_GETSET(PARAM, LOWER_PARAM, TYPE) \
+    inline const osgAnimation::TypedSampler<TYPE>* get##PARAM() const {return _##LOWER_PARAM.get();}\
+    inline osgAnimation::TypedSampler<TYPE>* get##PARAM() {return _##LOWER_PARAM.get();}\
+    void set##PARAM(osgAnimation::TypedSampler<TYPE>* sampler) {  _##LOWER_PARAM = sampler; }
+
+
+  class UpdateMatrixTransform : public osg::NodeCallback
+  {
+  public:
+    META_Object(osgStupeflix, UpdateMatrixTransform);
+    UpdateMatrixTransform():
+      _startTime(0.0),
+      _timeStretch(1.0)
+    {}
+
+
+    /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+    UpdateMatrixTransform(const UpdateMatrixTransform& updateMatrixTransform,
+                          const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
+      _startTime(updateMatrixTransform._startTime),
+      _timeStretch(updateMatrixTransform._timeStretch)
+    {
+        _position = updateMatrixTransform._position.get();
+        _scale = updateMatrixTransform._scale.get();
+        _rotation = updateMatrixTransform._rotation.get();
+        _axisRotation = updateMatrixTransform._axisRotation.get();
+        _matrix = updateMatrixTransform._matrix.get();
+    }
+
+    // Callback method called by the NodeVisitor when visiting a node.
+    virtual void operator()(osg::Node* node, osg::NodeVisitor* nv)
+    {
+
+    double t = nv->getFrameStamp()->getSimulationTime();
+    t = (t - _startTime) * _timeStretch;
+    osg::Vec3 translate;
+    if (_position.valid())
+    {
+      _position->getValueAt(t, translate);
+    }
+    else
+    {
+      translate = osg::Vec3(0,0,0);
+    }
+
+    osg::Vec3 scale;
+    if (_scale.valid())
+    {
+      osg::Vec3 v;
+      _scale->getValueAt(t, scale);
+    }
+    else
+    {
+      scale = osg::Vec3(1,1,1);
+    }
+
+    osg::Quat rotate;
+    if (_rotation.valid())
+    {
+      _rotation->getValueAt(t, rotate);
+    }
+
+    if (_axisRotation.valid())
+    {
+      osg::Vec4 value;
+      _axisRotation->getValueAt(t, value);
+      rotate.makeRotate(value[0]/ 180.0 * osg::PI, value[1], value[2], value[3]);
+    }
+
+    osg::Matrixf full_matrix;
+    if (_matrix.valid())
+    {
+      _matrix->getValueAt(t, full_matrix);
+    }
+    else
+    {
+      full_matrix.makeIdentity();
+    }
+
+    osg::MatrixTransform* tr = static_cast<osg::MatrixTransform*>(node);
+    osg::Matrix result;
+    result.makeRotate(rotate);
+    result.postMultTranslate(translate);
+    result.preMultScale(scale);
+    result *= full_matrix;
+
+    //        osg::notify(osg::INFO) << "osgStupeflix: " << tr->getName() << " time " << t << " " << result << std::endl;
+    tr->setMatrix(result);
+
+    traverse(tr,nv);
+  }
+
+
+    UPDATEMATRIX_GETSET(Position, position, osg::Vec3)
+    UPDATEMATRIX_GETSET(Scale, scale, osg::Vec3)
+    UPDATEMATRIX_GETSET(AxisRotation, axisRotation, osg::Vec4)
+    UPDATEMATRIX_GETSET(Matrix, matrix, osg::Matrixf)
+    UPDATEMATRIX_GETSET(QuaternionRotation, rotation, osg::Quat)
+
+    inline void setStartAndTimeStretch(float startTime, float timeStretch) {
+        _startTime = startTime;
+        _timeStretch = 1.0 / timeStretch;
+    }
+
+    //    inline const osgAnimation::QuatSphericalLinearSampler* getQuaternionRotation() const { return _rotation; }
+    //   inline osgAnimation::QuatSphericalLinearSampler* getQuaternionRotation() { return _rotation; }
+    //    void setQuaternionRotation(osgAnimation::QuatSphericalLinearSampler* sampler) { _rotation = sampler; }
+
+  protected:
+    osg::ref_ptr<osgAnimation::TypedSampler<osg::Vec3> > _position;
+    osg::ref_ptr<osgAnimation::TypedSampler<osg::Vec3> > _scale;
+    osg::ref_ptr<osgAnimation::TypedSampler<osg::Quat> > _rotation;
+    osg::ref_ptr<osgAnimation::TypedSampler<osg::Vec4> > _axisRotation;
+    osg::ref_ptr<osgAnimation::TypedSampler<osg::Matrixf> > _matrix;
+    float _startTime;
+    float _timeStretch;
+
+  };
+
+
+    UpdateMatrixTransform* getMatrixUpdateCallback(osg::MatrixTransform* transform);
+
+    void setAnimationUniformFloat(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<float>* keys);
+    void setAnimationUniformDouble(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<double>* keys);
+
+    void setAnimationUniformVec2(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osg::Vec2f>* keys);
+    void setAnimationUniformVariableSpeedCubicBezierVec2(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec2VariableSpeedCubicBezier>* keys);
+
+    void setAnimationUniformVec3(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void setAnimationUniformVariableSpeedCubicBezierVec3(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec3VariableSpeedCubicBezier>* keys);
+
+    void setAnimationUniformVec4(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osg::Vec4f>* keys);
+    void setAnimationUniformVariableSpeedCubicBezierVec4(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec4VariableSpeedCubicBezier>* keys);
+
+    void setAnimationUniformMatrix(osg::Uniform* uniform, osgAnimation::TemplateKeyframeContainer<osg::Matrixf>* keys);
+
+    void setAnimationPositionVec3(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void setAnimationVariableSpeedCubicBezierPositionVec3(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec3VariableSpeedCubicBezier>* keys);
+
+    void setAnimationScaleVec3(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void setAnimationVariableSpeedCubicBezierScaleVec3(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec3VariableSpeedCubicBezier>* keys);
+    void setAnimationQuaternionRotation(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osg::Quat>* keys);
+    void setAnimationMatrix(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osg::Matrixf>* keys);
+
+    void setAnimationAxisRotation(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osg::Vec4f>* keys);
+    void setAnimationVariableSpeedCubicBezierAxisRotation(osg::MatrixTransform* matrix, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec4VariableSpeedCubicBezier>* keys);
+
+    void addCameraAnimationPositionVec3(osg::Camera* camera, osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys, bool addToPOI);
+
+    void addCameraAnimationVariableSpeedCubicBezierPositionVec3(osg::Camera* camera, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec3VariableSpeedCubicBezier>* keys, bool addToPOI);
+
+    void addCameraAnimationScaleVec3(osg::Camera* camera, osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void addCameraAnimationQuaternionRotation(osg::Camera* camera, osgAnimation::TemplateKeyframeContainer<osg::Quat>* keys);
+    void addCameraAnimationAxisRotation(osg::Camera* camera, osgAnimation::TemplateKeyframeContainer<osg::Vec4f>* keys);
+    void addCameraAnimationVariableSpeedCubicBezierAxisRotation(osg::Camera* matrix, osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec4VariableSpeedCubicBezier>* keys);
+    void setCameraAnimationPointOfInterest(osg::Camera* matrix, osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void setCameraAnimationViewAngle(osg::Camera* matrix, osgAnimation::TemplateKeyframeContainer<float>* keys);
+    void setCameraNearFar(osg::Camera* camera, float near, float far);
+    void setCameraAspectRatio(osg::Camera* camera, float aspect);
+
+
+    void nodeTimeStretch(osg::Node* node, float startTime, float timeStretch);
+
+
+#define STACKED_ELEMENT_BASE(NAME, TYPE)             \
+    META_Object(osgStupeflix, StupeflixStacked##NAME##Element); \
+    StupeflixStacked##NAME##Element() { \
+    }\
+\
+    inline const osgAnimation::TypedSampler<TYPE>* getSampler() const {return _sampler.get();}\
+    inline osgAnimation::TypedSampler<TYPE>* getSampler() {return _sampler.get();}\
+    inline void setSampler(osgAnimation::TypedSampler<TYPE>* sampler) {_sampler = sampler;}\
+
+#define STACKED_ELEMENT_SAMPLER(TYPE)             \
+    osg::ref_ptr<osgAnimation::TypedSampler<TYPE> > _sampler; \
+    bool _inverse;
+
+class StupeflixStackedTranslateElement : public osgAnimation::StackedTranslateElement
+{
+
+public:
+    STACKED_ELEMENT_BASE(Translate, osg::Vec3);
+
+    /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+    StupeflixStackedTranslateElement(const StupeflixStackedTranslateElement& stackedElement,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
+    osgAnimation::StackedTranslateElement(stackedElement, copyop)
+    {
+        _sampler  = stackedElement._sampler.get();
+        _inverse = stackedElement._inverse;
+    }
+
+    StupeflixStackedTranslateElement(osgAnimation::TypedSampler<osg::Vec3>* sampler, bool inverse = false) :
+    osgAnimation::StackedTranslateElement()
+    {
+        _sampler = sampler;
+        _inverse = inverse;
+    }
+
+    void update(float t);
+
+protected:
+    STACKED_ELEMENT_SAMPLER(osg::Vec3)
+};
+
+class StupeflixStackedMatrixElement : public osgAnimation::StackedMatrixElement
+{
+public:
+    STACKED_ELEMENT_BASE(Matrix, osg::Matrixf);
+
+    StupeflixStackedMatrixElement(const StupeflixStackedMatrixElement& stackedElement,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) :
+    osgAnimation::StackedMatrixElement(stackedElement, copyop)
+    {
+        _sampler  = stackedElement._sampler.get();
+        _inverse = stackedElement._inverse;
+    }
+
+  StupeflixStackedMatrixElement(osgAnimation::TypedSampler<osg::Matrixf> * sampler, bool inverse = false) :
+  osgAnimation::StackedMatrixElement()
+    {
+        _sampler = sampler;
+        _inverse = inverse;
+    }
+  void update(float t);
+
+protected:
+    STACKED_ELEMENT_SAMPLER(osg::Matrixf)
+};
+
+
+class StupeflixStackedScaleElement : public osgAnimation::StackedScaleElement
+{
+public:
+    STACKED_ELEMENT_BASE(Scale, osg::Vec3);
+
+    StupeflixStackedScaleElement(const StupeflixStackedScaleElement& stackedElement,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) :
+    osgAnimation::StackedScaleElement(stackedElement, copyop)
+    {
+        _sampler  = stackedElement._sampler.get();
+        _inverse = stackedElement._inverse;
+    }
+
+    StupeflixStackedScaleElement(osgAnimation::TypedSampler<osg::Vec3> * sampler, bool inverse = false):
+    osgAnimation::StackedScaleElement()    
+    {
+        _sampler = sampler;
+        _inverse = inverse;
+    }
+    void update(float t);
+protected:
+    STACKED_ELEMENT_SAMPLER(osg::Vec3)
+};
+
+class StupeflixStackedRotateAxisElement : public osgAnimation::StackedRotateAxisElement
+{
+public:
+    STACKED_ELEMENT_BASE(RotateAxis, osg::Vec4);
+
+
+    StupeflixStackedRotateAxisElement(const StupeflixStackedRotateAxisElement& stackedElement,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) :
+    osgAnimation::StackedRotateAxisElement(stackedElement, copyop)
+    {
+       _sampler  = stackedElement._sampler.get();
+       _inverse = stackedElement._inverse;
+    }
+
+    StupeflixStackedRotateAxisElement(osgAnimation::TypedSampler<osg::Vec4> * sampler, bool inverse = false) :
+    osgAnimation::StackedRotateAxisElement()
+    {
+        _sampler = sampler;
+        _inverse = inverse;
+    }
+
+    void update(float t);
+protected:
+    STACKED_ELEMENT_SAMPLER(osg::Vec4)
+};
+
+  class StupeflixStackedQuaternionElement : public osgAnimation::StackedQuaternionElement
+  {
+  public:
+    STACKED_ELEMENT_BASE(Quaternion, osg::Quat);
+
+    StupeflixStackedQuaternionElement(const StupeflixStackedQuaternionElement& stackedElement,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) :
+    osgAnimation::StackedQuaternionElement(stackedElement, copyop)    
+    {
+        _sampler  = stackedElement._sampler.get();
+        _inverse = stackedElement._inverse;
+    }
+
+    StupeflixStackedQuaternionElement(osgAnimation::QuatSphericalLinearSampler* sampler, bool inverse = false) :
+    osgAnimation::StackedQuaternionElement()    
+    {
+        _sampler = sampler;
+        _inverse = inverse;
+    }
+    void update(float t);
+
+  protected:
+    STACKED_ELEMENT_SAMPLER(osg::Quat)
+    //    osg::ref_ptr<osgAnimation::QuatSphericalLinearSampler> _sampler;
+  };
+
+  class UpdateTexMat : public osg::StateAttributeCallback
+  {
+  public:
+    META_Object(osgStupeflix, UpdateTexMat);
+
+    UpdateTexMat();
+    /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+    UpdateTexMat(const UpdateTexMat& updateTexMat,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+    // Callback method called by the NodeVisitor when visiting a node.
+    virtual void operator()(osg::StateAttribute* node, osg::NodeVisitor* nv);
+
+    void addMatrix(osgAnimation::TemplateKeyframeContainer<osg::Matrixf>* keys);
+    void addTranslate(osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void addScale(osgAnimation::TemplateKeyframeContainer<osg::Vec3f>* keys);
+    void addQuaternionRotation(osgAnimation::TemplateKeyframeContainer<osg::Quat>* keys);
+    void addAxisRotation(osgAnimation::TemplateKeyframeContainer<osg::Vec4f>* keys);
+
+    inline const osgAnimation::StackedTransform& getTransforms() const {return _transforms;}
+    inline osgAnimation::StackedTransform& getTransforms() {return _transforms;}
+
+    inline void setStartAndTimeStretch(float startTime, float timeStretch) {
+        _startTime = startTime;
+        _timeStretch = 1.0 / timeStretch;
+    }
+
+  protected:
+    osgAnimation::StackedTransform _transforms;
+    float _startTime;
+    float _timeStretch;
+  };
+
+
+  UpdateTexMat* getOrCreateTexMatUpdateCallback(osg::StateAttribute* stateAttribute);
+
+  // TEMPORARY
+  osgAnimation::TemplateSampler<osgAnimation::Vec3VariableSpeedCubicBezierInterpolator>* vec3VariableSpeedCubicBezierSamplerCreate(osgAnimation::TemplateKeyframeContainer<osgAnimation::Vec3VariableSpeedCubicBezier>* keys);
+
+  osg::Vec3 vec3VariableSpeedCubicBezierSamplerGetValue(osgAnimation::TemplateSampler<osgAnimation::Vec3VariableSpeedCubicBezierInterpolator>* sampler, double time);
+}
+#endif

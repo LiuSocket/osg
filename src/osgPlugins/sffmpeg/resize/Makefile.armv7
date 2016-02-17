@@ -1,0 +1,15 @@
+CC := ~/x-tools/arm-unknown-linux-gnueabi/bin/arm-unknown-linux-gnueabi-gcc
+AS := ~/x-tools/arm-unknown-linux-gnueabi/bin/arm-unknown-linux-gnueabi-as
+
+CFLAGS  += -Wall -Wextra -O2 -g
+CFLAGS  += -mcpu=cortex-a8
+ASFLAGS += -march=armv7-a -mfpu=neon --defsym linux_build=1
+
+NAME = resize_test
+all: $(NAME)
+$(NAME): $(NAME).o resize_armv7.o resize_ref.o main.o
+clean:
+	$(RM) *.o
+distclean: clean
+	$(RM) $(NAME)
+re: clean all

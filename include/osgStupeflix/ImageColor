@@ -1,0 +1,46 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 1998-2006 Robert Osfield 
+ *
+ * This application is open source and may be redistributed and/or modified   
+ * freely and without restriction, both in commericial and non commericial applications,
+ * as long as this copyright notice is maintained.
+ * 
+ * This application is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*/
+
+#ifndef OSG_STUPEFLIX_IMAGE
+#define OSG_STUPEFLIX_IMAGE 1
+
+#include <osg/Image>
+#include <osgStupeflix/Export>
+
+namespace osgStupeflix {
+
+
+    class OSGSTUPEFLIX_EXPORT ImageColor : public osg::Image
+
+    {
+    public:
+
+        META_Object(osgStupeflix, ImageColor);
+        ImageColor();
+        ImageColor(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+        ImageColor(const ImageColor& b, const osg::CopyOp& copyop= osg::CopyOp::SHALLOW_COPY);
+
+        inline void setR(unsigned int r) { data()[0] = (unsigned char) r; }
+        inline void setG(unsigned int g) { data()[1] = (unsigned char) g; }
+        inline void setB(unsigned int b) { data()[2] = (unsigned char) b; }
+        inline void setA(unsigned int a) { data()[3] = (unsigned char) a; }
+
+        inline unsigned int getR() const { return data()[0]; }
+        inline unsigned int getG() const { return data()[1]; }
+        inline unsigned int getB() const { return data()[2]; }
+        inline unsigned int getA() const { return data()[3]; }
+        
+    };
+
+    osg::Image* createImageFromColor(int r, int g, int b, int a);
+}
+
+#endif

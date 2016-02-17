@@ -1,0 +1,98 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 1998-2006 Robert Osfield 
+ *
+ * This application is open source and may be redistributed and/or modified   
+ * freely and without restriction, both in commericial and non commericial applications,
+ * as long as this copyright notice is maintained.
+ * 
+ * This application is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*/
+
+#ifndef OSG_STUPEFLIX_WINDOW_CAPTURE_CALLBACK
+#define OSG_STUPEFLIX_WINDOW_CAPTURE_CALLBACK 1
+
+#include <osgViewer/Viewer>
+//#include <osgStupeflix/WindowCaptureCallbackBase>
+#include <osgStupeflix/ScreenCapture>
+#include <OpenThreads/Condition>
+
+namespace osgStupeflix {
+
+
+class WindowCaptureCallback : public osg::Camera::DrawCallback
+{
+public:
+    
+    struct ContextData : public osg::Referenced
+    {
+        ContextData(osg::GraphicsContext* gc, ScreenCapture::Mode mode, GLenum readBuffer, const std::string& name, unsigned int startFrame = 0);
+        void getSize(osg::GraphicsContext* gc, int& width, int& height);
+        void updateTimings(osg::Timer_t tick_start,
+                           osg::Timer_t tick_afterReadPixels,
+                           osg::Timer_t tick_afterMemCpy,
+                           unsigned int dataSize);
+
+        void read();
+        void readPixels();
+        void singlePBO(osg::GLBufferObject::Extensions* ext);
+        bool multiPBO(osg::GLBufferObject::Extensions* ext);
+        std::string getImageData(unsigned int frame);
+        
+        typedef std::pair<unsigned int , osg::ref_ptr<osg::Image> >FrameIndexImage;
+
+        typedef std::vector< FrameIndexImage >  ImageBuffer;
+        typedef std::vector< GLuint > PBOBuffer;
+        
+        osg::GraphicsContext*   _gc;
+        ScreenCapture::Mode     _mode;
+        GLenum                  _readBuffer;
+        std::string             _fileName;
+            
+        GLenum                  _pixelFormat;
+        GLenum                  _type;
+        int                     _width;
+        int                     _height;
+            
+        unsigned int            _currentImageIndex;
+        ImageBuffer             _imageBuffer;
+            
+        unsigned int            _currentPboIndex;
+        PBOBuffer               _pboBuffer;
+
+        unsigned int            _reportTimingFrequency;
+        unsigned int            _numTimeValuesRecorded;
+        double                  _timeForReadPixels;
+        double                  _timeForFullCopy;
+        double                  _timeForMemCpy;
+        osg::Timer_t            _previousFrameTick;
+
+        OpenThreads::Mutex      _bufferImage;
+        OpenThreads::Condition  _hasNewImageToWrite;
+        OpenThreads::Condition  _hasImageToRead;
+        unsigned int            _frameWritten;
+        unsigned int            _frameRead;
+    };
+    
+    WindowCaptureCallback(ScreenCapture::Mode mode, ScreenCapture::FramePosition position, GLenum readBuffer, unsigned int startFrame);
+    ContextData* createContextData(osg::GraphicsContext* gc) const;
+    ContextData* getContextData(osg::GraphicsContext* gc) const;
+    virtual void operator () (osg::RenderInfo& renderInfo) const;
+    std::string getImageData(unsigned int frame);
+        
+    typedef std::map<osg::GraphicsContext*, osg::ref_ptr<ContextData> > ContextDataMap;
+
+    ScreenCapture::Mode                        _mode;        
+    ScreenCapture::FramePosition               _position;
+    GLenum                      _readBuffer;
+    mutable OpenThreads::Mutex  _mutex;
+    mutable ContextDataMap      _contextDataMap;
+
+    mutable OpenThreads::Condition  _waitContextIsReady;
+    mutable int                     _contextIsReady;
+    unsigned int _frameStart;
+};
+
+}
+
+#endif

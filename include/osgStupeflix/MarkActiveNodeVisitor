@@ -1,0 +1,72 @@
+/*  -*-c++-*- 
+ *  Copyright (C) 2010 Stupeflix 
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_MARKACTIVENODEVISITOR
+#define OSGSTUPEFLIX_MARKACTIVENODEVISITOR 1
+
+#include <osgStupeflix/Export>
+#include <osg/NodeVisitor>
+
+#define PREFETCH_TIME 2.0
+
+#define ACTIVE 0x1
+#define PREFETCH 0x2
+#define WASACTIVE 0x4
+#define USED_BITS (ACTIVE | PREFETCH | WASACTIVE)
+#define UNUSED_BITS (~ USED_BITS)
+
+
+namespace osgStupeflix
+{
+    class OSGSTUPEFLIX_EXPORT ResetAllNodeVisitor : public osg::NodeVisitor
+    {
+    public:
+        ResetAllNodeVisitor();
+        void apply(osg::Group&);
+    };
+
+    class OSGSTUPEFLIX_EXPORT MarkActiveNodeVisitor : public osg::NodeVisitor
+    {
+    public:
+        MarkActiveNodeVisitor();
+        void setCurrentTime(double time);
+        void setNodeMask(osg::Node* node, osg::Node::NodeMask mask);
+        void apply(osg::Node&);
+        void apply(osg::StateSet* stateset);
+
+    protected:
+        double _time;
+    };
+
+
+    class OSGSTUPEFLIX_EXPORT CheckActiveNodeVisitor : public osg::NodeVisitor
+    {
+    public:
+        CheckActiveNodeVisitor();
+        void setCurrentTime(double time);
+        void apply(osg::Node&);
+        void apply(osg::StateSet* stateSet);
+
+        bool imageWasNotLoaded() {
+            return _imageWasNotLoaded;
+        }
+
+        bool fileDidNotExist() {
+            return _fileDidNotExist;
+        }
+
+    protected:
+        double _time;
+        bool _fileDidNotExist;
+        bool _imageWasNotLoaded;
+        osg::Node::NodeMask _currentMask;
+    };
+
+}
+
+
+#endif

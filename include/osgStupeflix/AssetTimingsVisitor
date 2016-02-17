@@ -1,0 +1,45 @@
+//
+//  AssetTimingsVisitor.h
+//  StupeflixStudio
+//
+//  Created by Francois Lagunas on 09/04/13.
+//  Copyright (c) 2013 Stupeflix. All rights reserved.
+//
+
+/*  -*-c++-*- 
+ *  Copyright (C) 2010 Stupeflix 
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_ASSET_TIMINGS_VISITOR
+#define OSGSTUPEFLIX_ASSET_TIMINGS_VISITOR 1
+
+#include <osgStupeflix/Export>
+#include <osg/NodeVisitor>
+
+
+namespace osgStupeflix
+{
+
+    typedef void (*AssetTimingsCallback)(std::string filename, double startTime, double stopTime, void* callbackData);
+
+    class OSGSTUPEFLIX_EXPORT AssetTimingsVisitor : public osg::NodeVisitor
+    {
+    public:
+        AssetTimingsVisitor(AssetTimingsCallback callback, void* callbackData);
+        void apply(osg::Node&);
+        void apply(osg::StateSet* stateset);
+
+    protected:
+        AssetTimingsCallback _callback;
+        void* _callbackData;
+        double _startTime;
+        double _stopTime;
+    };
+
+}
+
+
+#endif

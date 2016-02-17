@@ -1,0 +1,81 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 2011 Stupeflix
+
+*/
+
+#ifndef OSG_STUPEFLIX_IMAGE_STREAM
+#define OSG_STUPEFLIX_IMAGE_STREAM 1
+
+#include <osg/ImageStream>
+#include <osg/ImageStreamProxy>
+#include <osgStupeflix/Sampler>
+#include <osg/NodeVisitor>
+
+namespace osgStupeflix {
+
+  const double DESTRUCTION_TIME = HUGE_VAL;
+
+  void setVideoTimeMap(osg::Image* image, osgAnimation::FloatVariableSpeedCubicBezierKeyframeContainer* container);
+  void setSamplerKeyFrameContainer(osgAnimation::FloatVariableSpeedCubicBezierSampler* sampler, osgAnimation::FloatVariableSpeedCubicBezierKeyframeContainer* container);
+  float getSamplerValueAt(osgAnimation::FloatVariableSpeedCubicBezierSampler* sampler, float time);
+
+  // Callback. Will be called with parameter DESTRUCTION_TIME when not needed anymore
+  typedef void (* FrameTimeChangedCallback) (double time, void* data);
+
+  class OSG_EXPORT ImageStream : public osg::ImageStreamProxy
+  {
+      public:
+          /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+         ImageStream(const ImageStream& image,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY) :
+           _referenceTime(image._referenceTime),
+           _timeSampler(image._timeSampler),
+           osg::ImageStreamProxy(image,copyop){};
+
+         /** Default constructor **/
+         ImageStream():
+           _referenceTime(0),
+           _timeSampler(0),
+           osg::ImageStreamProxy(){};
+
+         virtual void setFrameTimeChangedCallback(FrameTimeChangedCallback callback, void* callbackData)
+         {
+         }
+
+         virtual void setVideoTimeMap(osgAnimation::FloatVariableSpeedCubicBezierSampler* sampler) {
+            _timeSampler = sampler;
+         }
+
+         virtual double getRemappedTime(float absTime) {
+              double t;
+
+              if (absTime < _referenceTime) {
+                  absTime = _referenceTime;
+              }
+
+              t = (absTime - _referenceTime);
+
+              if (_timeSampler != 0) {
+                 float newT = t;
+                 _timeSampler->getValueAt(t, newT);
+                 t = newT;
+              }
+              return t;
+        }
+
+        virtual bool ready(double time) {
+            return true;
+        }
+
+      protected:
+        double _referenceTime;
+        osgAnimation::FloatVariableSpeedCubicBezierSampler* _timeSampler;
+
+
+  };
+
+
+  bool realTimeVideoModeGet();
+  void realTimeVideoModeSet(bool rTime);
+ 
+}
+
+#endif

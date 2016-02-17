@@ -1,0 +1,40 @@
+#ifndef OSG_IMAGESTREAMPROXY
+#define OSG_IMAGESTREAMPROXY 1
+
+#include <osg/Image>
+#include <osg/ImageStream>
+
+namespace osg {
+
+class OSG_EXPORT ImageProxyClient : public Referenced
+{
+    public:
+        virtual void newFrame(const unsigned char* data, unsigned int width, unsigned int height, double time) {}
+};
+
+class OSG_EXPORT ImageStreamProxy : public ImageStream
+{
+    public:
+        ImageStreamProxy();
+
+        /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+        ImageStreamProxy(const ImageStreamProxy& image,const CopyOp& copyop=CopyOp::SHALLOW_COPY);
+
+        virtual Object* cloneType() const { return new ImageStreamProxy(); }
+        virtual Object* clone(const CopyOp& copyop) const { return new ImageStreamProxy(*this,copyop); }
+        virtual bool isSameKindAs(const Object* obj) const { return dynamic_cast<const ImageStreamProxy*>(obj)!=0; }
+        virtual const char* libraryName() const { return "osg"; }
+        virtual const char* className() const { return "ImageStreamProxy"; }
+
+        void registerClient(osg::ImageProxyClient* client);
+        void updateClients(const unsigned char *data, unsigned int width, unsigned int height, double time);
+
+    protected:
+
+        std::vector< osg::ref_ptr<osg::ImageProxyClient> > clients;
+        virtual ~ImageStreamProxy() {}
+};
+
+}
+
+#endif

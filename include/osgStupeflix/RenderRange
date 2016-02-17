@@ -1,0 +1,64 @@
+/*  -*-c++-*-
+ *  Copyright (C) 2010 Stupeflix
+ *
+ * Authors:
+ *         Francois Lagunas <francois@stupeflix.com>
+ */
+
+#ifndef OSGSTUPEFLIX_RENDERRANGE
+#define OSGSTUPEFLIX_RENDERRANGE 1
+
+#include <osgStupeflix/Export>
+#include <osgStupeflix/RenderOnce>
+
+#define RR_INVALID_RANGE_INDEX    -1
+#define RR_INVALID_LAST_DRAW_TIME -1.0
+
+namespace osgStupeflix
+{
+
+    class OSGSTUPEFLIX_EXPORT RenderRange : public RenderOnce
+    {
+    public:
+
+        enum RangeType
+        {
+          ONCE, CONTINUOUS, NO_RENDER
+        };
+
+        META_Node(osgStupeflix, RenderRange);
+        RenderRange();
+        RenderRange(const RenderRange& b, const osg::CopyOp& copyop= osg::CopyOp::SHALLOW_COPY);
+
+        virtual void reset();
+        virtual osg::Node::NodeMask nodeMask(float time);
+        virtual bool needCleaning(float time);
+        virtual void wasDrawn(float time);
+        // Add a range from start to plus infinity
+        // if CONTINUOUS, updateEnable must be equal to true
+        virtual void addRange(float start, RangeType type, bool updateEnable = false);
+
+    protected:
+        struct Range {
+          float start;
+          RangeType type;
+          bool updateEnable;
+        };
+
+        // Set of ranges
+        std::vector<Range> _ranges;
+        // Just to know what last index was used, to speed lookup in _ranges
+        int _lastAccessRangeIndex;
+
+        // Last time we have drawn the children
+        int _lastDrawRangeIndex;
+        float _lastDrawTime;
+
+        // Find the range for the given time, or RR_INVALID_RANGE_INDEX if not found
+        virtual int findRange(float time);
+        // Debug _ranges in console
+        virtual void debugRanges();
+    };
+
+}
+#endif

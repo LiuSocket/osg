@@ -1,0 +1,11 @@
+#ifndef OSG_STUPEFLIX_FONT_HELPER
+#define OSG_STUPEFLIX_FONT_HELPER 1
+
+#include <osgText/Font>
+#include <osgText/Glyph>
+
+namespace osgStupeflix {
+    bool isCharInFont(unsigned int charcode, osgText::Font* font);
+}
+
+#endif

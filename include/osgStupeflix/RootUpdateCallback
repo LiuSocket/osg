@@ -1,0 +1,30 @@
+/*  -*-c++-*- 
+ *  Copyright (C) 2010 Stupeflix 
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_ROOTUPDATECALLBACK
+#define OSGSTUPEFLIX_ROOTUPDATECALLBACK 1
+
+#include <osgStupeflix/Export>
+#include <osg/NodeCallback>
+#include <osg/StateAttributeCallback>
+#include <osgUtil/IncrementalCompileOperation>
+
+namespace osgStupeflix
+{
+    class OSGSTUPEFLIX_EXPORT RootUpdateCallback : public osg::NodeCallback
+    {
+    public:
+        RootUpdateCallback(bool debug = false);
+        void operator()(osg::Node* , osg::NodeVisitor* );
+    protected:
+        bool debug;
+    };
+
+}
+
+
+#endif

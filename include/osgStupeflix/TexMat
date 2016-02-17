@@ -1,0 +1,105 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 1998-2006 Robert Osfield
+ *
+ * This library is open source and may be redistributed and/or modified under
+ * the terms of the OpenSceneGraph Public License (OSGPL) version 0.0 or
+ * (at your option) any later version.  The full license is in LICENSE file
+ * included with this distribution, and on the openscenegraph.org website.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * OpenSceneGraph Public License for more details.
+*/
+
+#ifndef OSGSTUPEFLIX_TEXMAT
+#define OSGSTUPEFLIX_TEXMAT 1
+
+#include <osg/TexMat>
+#include <osg/Matrix>
+#include <osg/Uniform>
+
+namespace osgStupeflix {
+
+class DefaultUpdateTexMat : public osg::StateAttributeCallback
+  {
+  public:
+    META_Object(osgStupeflix, DefaultUpdateTexMat);
+
+    DefaultUpdateTexMat();
+    /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+    DefaultUpdateTexMat(const DefaultUpdateTexMat& updateTexMat,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY);
+    // Callback method called by the NodeVisitor when visiting a node.
+    virtual void operator()(osg::StateAttribute* node, osg::NodeVisitor* nv);
+
+  };
+
+
+
+/** A texture matrix state class that encapsulates OpenGL texture matrix
+  * functionality. */
+class OSG_EXPORT TexMat : public osg::TexMat
+{
+    public :
+
+    META_StateAttribute(osgStupeflix, TexMat, osg::StateAttribute::TEXMAT);
+        TexMat():
+          osg::TexMat(),
+          _index(0)
+        {
+            initUniform();
+            _tmpMatrix = new osg::Matrix();
+        }
+
+
+        TexMat(unsigned int index):
+          osg::TexMat(),
+          _index(index)
+        {
+            initUniform();
+            _tmpMatrix = new osg::Matrix();
+        }
+
+
+        TexMat(const osg::Matrix& matrix, unsigned int index):
+          osg::TexMat(matrix),
+          _index(index)
+        {
+            initUniform();
+            _tmpMatrix = new osg::Matrix();
+        }
+
+        /** Copy constructor using CopyOp to manage deep vs shallow copy. */
+        TexMat(const TexMat& texmat,const osg::CopyOp& copyop=osg::CopyOp::SHALLOW_COPY):
+          osg::TexMat(texmat, copyop),
+          _index(texmat._index)
+        {
+            initUniform();
+            _tmpMatrix = new osg::Matrix();
+        }
+        
+        /** Apply texture matrix to OpenGL state. */
+        virtual void apply(osg::State& state) const;
+
+        void addToParentStateSet();
+        
+        inline void setIndex(unsigned int index) { _index = index; }
+        inline unsigned int getIndex() const { return _index; }
+
+        inline osg::Uniform* getUniform() const {return _texMatUniform;};
+
+        void setMatrix(const osg::Matrix& matrix);
+
+ protected:
+        virtual ~TexMat( void );
+        void initUniform();        
+
+        osg::ref_ptr<osg::Uniform> _texMatUniform;
+        unsigned int _index;
+        osg::Matrix* _tmpMatrix;
+
+};
+
+}
+
+
+#endif

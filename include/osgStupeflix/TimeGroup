@@ -1,0 +1,38 @@
+/*  -*-c++-*- 
+ *  Copyright (C) 2010 Stupeflix 
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_GROUP
+#define OSGSTUPEFLIX_GROUP 1
+
+#include <osgStupeflix/Export>
+#include <osg/Group>
+
+namespace osgStupeflix
+{
+
+    class OSGSTUPEFLIX_EXPORT TimeGroup : public osg::Group
+
+    {
+    public:
+
+        META_Node(osgStupeflix, TimeGroup);
+        TimeGroup();
+        TimeGroup(const TimeGroup& b, const osg::CopyOp& copyop= osg::CopyOp::SHALLOW_COPY);
+
+        inline void setDuration(double duration) { _duration = duration; }
+        inline void setStartTime(double start) { _start = start; }
+        inline double getDuration() const { return _duration; }
+        inline double getStartTime() const { return _start; }
+
+    protected:
+        double _start;
+        double _duration;
+
+    };
+
+}
+#endif

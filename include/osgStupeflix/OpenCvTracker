@@ -1,0 +1,41 @@
+#pragma once
+
+#if !TRACKING_NOT_SUPPORTED
+
+#include <cfloat>
+#include <osg/Uniform>
+#include <osg/ImageStreamProxy>
+#include <osg/MatrixTransform>
+#include <osgStupeflix/Tracker>
+#include <osgStupeflix/OpenCvTrackerBase>
+
+namespace osgStupeflix {
+
+    class OSG_EXPORT OpenCvTracker : public osgStupeflix::Tracker {
+
+        public:
+              /*
+              ** Constructor
+              ** Parameters :
+              ** center : the position of the tracker (in percent of the screen) will be set in this uniform
+              ** size : the size of the tracker (in percent of the screen) will be set in this uniform
+              ** [startTime] : the time when the tracker will start
+              ** [endTIme] : the time when the tracker will stop
+              */
+            OpenCvTracker(osg::Vec2 const &center, osg::Vec2 const &size,
+                          double startTime = 0, double endTime = DBL_MAX);
+
+            virtual osg::Vec2 doMatching(const unsigned char *frameData, unsigned int width,
+                                          unsigned int height);
+            virtual ~OpenCvTracker();
+
+            osg::ref_ptr<osgStupeflix::Tracker> asTracker() {
+              return osg::ref_ptr<osgStupeflix::Tracker>(this);
+            }
+        private:
+
+            OpenCvTrackerBase _tracker_base;
+    };
+}
+
+#endif

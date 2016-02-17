@@ -1,0 +1,39 @@
+/*  -*-c++-*- 
+ *  Copyright (C) 2010 Stupeflix 
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_RENDERONCE
+#define OSGSTUPEFLIX_RENDERONCE 1
+
+#include <osgStupeflix/Export>
+#include <osg/Group>
+#include <osgUtil/CullVisitor>
+#include <osgStupeflix/MarkActiveNodeVisitor>
+
+namespace osgStupeflix
+{
+
+    class OSGSTUPEFLIX_EXPORT RenderOnce : public osg::Group
+    {
+    public:
+
+        META_Node(osgStupeflix, RenderOnce);
+        RenderOnce();
+        RenderOnce(const RenderOnce& b, const osg::CopyOp& copyop= osg::CopyOp::SHALLOW_COPY);
+
+        virtual void reset();
+        virtual osg::Node::NodeMask nodeMask(float time);
+        virtual bool needCleaning(float time);
+
+        virtual void wasDrawn(float time);
+
+    protected:
+        bool _dirty;
+
+    };
+
+}
+#endif

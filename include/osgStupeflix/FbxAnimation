@@ -1,0 +1,98 @@
+#ifndef OSG_STUPEFLIX_FBX_ANIMATION
+#define OSG_STUPEFLIX_FBX_ANIMATION 1
+
+#include <string>
+
+#include <osg/NodeVisitor>
+#include <osgAnimation/Animation>
+
+namespace osg { class Node; }
+namespace osgAnimation {
+  class BasicAnimationManager;
+  class Animation;
+}
+
+namespace osgStupeflix {
+
+  class FbxException
+    : public std::exception
+  {
+  public:
+    FbxException(std::string const &);
+    virtual ~FbxException() throw();
+
+    char const *what() const throw();
+
+  private:
+    std::string _error;
+  };
+
+  class FbxAnimation
+    : public osg::NodeVisitor
+  {
+  public:
+    /**
+     *  public constructor
+     *  \params: path to the file contining the model
+     */
+    FbxAnimation(std::string const &);
+    virtual ~FbxAnimation();
+
+    /**
+     *  Should not be use directly (but need to be public to be use from the NodeVisitor patern)
+     */
+    virtual void
+    apply(osg::Node &node);
+
+    /**
+     *  return the list animation's name contained by the model
+     */
+    std::vector<std::string> const &
+    getAnimationsNames() const;
+
+    /**
+     *  return the model node
+     */
+    osg::ref_ptr<osg::Node>
+    getNode() const;
+
+    /**
+     *  set the selected animation. must be called before any of the following member function
+     */
+    void
+    selectAnimation(std::string const &animationName);
+
+    void
+    playAnimation() const;
+
+    /**
+     *  getter ad setter to playmode
+     */
+    osgAnimation::Animation::PlayMode
+    getPlayMode() const;
+    void
+    setPlayMode(osgAnimation::Animation::PlayMode) const;
+
+    /**
+     *  getter and setter to the duration of the animation
+     */
+    double
+    getDuration() const;
+    void
+    setDuration(double duration) const;
+
+  private:
+    osg::ref_ptr<osgAnimation::BasicAnimationManager> _anim;
+    osg::ref_ptr<osg::Node> _node;
+    std::vector<std::string> _animNameList;
+
+    osg::ref_ptr<osgAnimation::Animation> _selected;
+
+    void loadAnimationNames();
+
+    osgAnimation::Animation *
+    getAnimation(std::string const &name) const;
+  };
+}
+
+#endif /* OSG_STUPEFLIX_FBX_ANIMATION */

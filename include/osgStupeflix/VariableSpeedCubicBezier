@@ -1,0 +1,123 @@
+/*  -*-c++-*-
+ *  Copyright (C) 2008 Cedric Pinson <cedric.pinson@plopbyte.net>
+ *
+ * This library is open source and may be redistributed and/or modified under
+ * the terms of the OpenSceneGraph Public License (OSGPL) version 0.0 or
+ * (at your option) any later version.  The full license is in LICENSE file
+ * included with this distribution, and on the openscenegraph.org website.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * OpenSceneGraph Public License for more details.
+*/
+
+#ifndef OSGSTUPEFLIX_VARIABLE_SPEED_CUBIC_BEZIER
+#define OSGSTUPEFLIX_VARIABLE_SPEED_CUBIC_BEZIER 1
+
+#include <osg/Vec2>
+#include <osg/Vec3>
+#include <osg/Vec4>
+#include <ostream>
+#include "osgAnimation/Keyframe"
+#include <iostream>
+#include <osgDB/InputStream>
+#include <osgDB/OutputStream>
+
+namespace osgAnimation
+{
+
+    template <class T>
+    class TemplateVariableSpeedCubicBezier
+    {
+    public:
+        TemplateVariableSpeedCubicBezier() {}
+
+        TemplateVariableSpeedCubicBezier(const T& p, const T& i, const T& o,
+                                         const osg::Vec2& ti, const osg::Vec2& to) :
+        _position(p),
+        _controlPointIn(i),
+        _controlPointOut(o),
+        _influenceSpeedIn(ti),
+        _influenceSpeedOut(to)
+        {
+        }
+
+        TemplateVariableSpeedCubicBezier(const T& p, const T& i, const T& o) :
+        _position(p),
+        _controlPointIn(i),
+        _controlPointOut(o),
+          _influenceSpeedIn(osg::Vec2()),
+        _influenceSpeedOut(osg::Vec2())
+        {
+        }
+
+        // Constructor with value only
+        TemplateVariableSpeedCubicBezier(const T& p) :
+          _position(p),
+          _controlPointIn(p),
+          _controlPointOut(p),
+          _influenceSpeedIn(osg::Vec2()),
+          _influenceSpeedOut(osg::Vec2())
+        {
+        }
+
+        const T& getPosition() const { return _position;}
+        const T& getControlPointIn() const { return _controlPointIn;}
+        const T& getControlPointOut() const { return _controlPointOut;}
+        const osg::Vec2& getInfluenceSpeedIn() const { return _influenceSpeedIn;}
+        const osg::Vec2& getInfluenceSpeedOut() const { return _influenceSpeedOut;}
+
+        T& getPosition() { return _position;}
+        T& getControlPointIn() { return _controlPointIn;}
+        T& getControlPointOut() { return _controlPointOut;}
+        osg::Vec2& getInfluenceSpeedIn() { return _influenceSpeedIn;}
+        osg::Vec2& getInfluenceSpeedOut() { return _influenceSpeedOut;}
+
+        void setPosition(const T& v) {_position = v;}
+        void setControlPointIn(const T& v) {_controlPointIn = v;}
+        void setControlPointOut(const T& v) {_controlPointOut = v;}
+        void setInfluenceSpeedIn(const osg::Vec2& v) {_influenceSpeedIn = v;}
+        void setInfluenceSpeedOut(const osg::Vec2& v) {_influenceSpeedOut = v;}
+
+        // steaming operators.
+        friend osgDB::OutputStream& operator << (osgDB::OutputStream& output, const TemplateVariableSpeedCubicBezier<T>& tcb)
+        {
+            output << tcb._position 
+                   << tcb._controlPointIn 
+                   << tcb._controlPointOut  
+                   << tcb._influenceSpeedIn 
+                   << tcb._influenceSpeedOut;
+
+            return output; // to enable cascading
+        }
+
+        friend osgDB::InputStream& operator >> (osgDB::InputStream& input, TemplateVariableSpeedCubicBezier<T>& tcb)
+        {
+            input >> tcb._position >> tcb._controlPointIn >> tcb._controlPointOut >> tcb._influenceSpeedIn >> tcb._influenceSpeedOut;
+            return input;
+        }
+
+    protected:
+        T _position, _controlPointIn, _controlPointOut;
+        // influenceSpeed is a couple (influence, speed), which describe a bezier in a diagram (time, distance) .
+        // There is no need for _distancePosition, as it is implicitely 0.0 for start point and the bezier length for end point
+        osg::Vec2 _influenceSpeedIn, _influenceSpeedOut;
+        bool _distanceControlEnabled;
+    };
+
+    typedef TemplateVariableSpeedCubicBezier<float> FloatVariableSpeedCubicBezier;
+    typedef TemplateVariableSpeedCubicBezier<double> DoubleVariableSpeedCubicBezier;
+    typedef TemplateVariableSpeedCubicBezier<osg::Vec2> Vec2VariableSpeedCubicBezier;
+    typedef TemplateVariableSpeedCubicBezier<osg::Vec3> Vec3VariableSpeedCubicBezier;
+    typedef TemplateVariableSpeedCubicBezier<osg::Vec4> Vec4VariableSpeedCubicBezier;
+
+    typedef TemplateKeyframeContainer<FloatVariableSpeedCubicBezier>  FloatVariableSpeedCubicBezierKeyframeContainer;
+    typedef TemplateKeyframeContainer<DoubleVariableSpeedCubicBezier>  DoubleVariableSpeedCubicBezierKeyframeContainer;
+    typedef TemplateKeyframeContainer<Vec2VariableSpeedCubicBezier>  Vec2VariableSpeedCubicBezierKeyframeContainer;
+    typedef TemplateKeyframeContainer<Vec3VariableSpeedCubicBezier>  Vec3VariableSpeedCubicBezierKeyframeContainer;
+    typedef TemplateKeyframeContainer<Vec4VariableSpeedCubicBezier>  Vec4VariableSpeedCubicBezierKeyframeContainer;
+
+}
+
+#endif

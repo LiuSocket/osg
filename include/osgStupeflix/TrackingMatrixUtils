@@ -1,0 +1,110 @@
+#pragma once
+
+#include <osg/MatrixTransform>
+
+
+namespace osgStupeflix {
+    /*
+    ** The initial_matrix taken by the addTracker method of the Tracking object is
+    ** a matrix which be applied on the tracker transformations.
+    ** This matrix describes the transformations to be in your correct coordinate system
+    ** from this coordinate system (origin at the top left corner):
+    **
+    **        z axis
+    **       /
+    **      /
+    **     /
+    **  0 +----------- 1    x axis
+    **    |
+    **    |
+    **    |                                        schema 1
+    **    |
+    **    |
+    **    1   y axis
+    */
+
+    class TrackingMatrixUtils {
+    public:
+        static osg::Matrix desktop_transform(float aspect_ratio) {
+            return (osg::Matrix::rotate(osg::Quat(osg::DegreesToRadians(-90.0), osg::Vec3(1, 0, 0))) *
+                    osg::Matrix::translate(0.0f, 0.0f, 0.0f) *
+                    osg::Matrix::scale(1.0f, 1.0f, 1.0f / (aspect_ratio)));
+        }
+        /*
+        ** For the desktop, the coordinate system is (origin at the top left corner):
+        **
+        **
+        **
+        **               y axis
+        **              /
+        **             /
+        **            /
+        **         0 +----------- 1    x axis
+        **           |
+        **           |
+        **           |
+        **           |
+        **           |
+        **   1 / aspect_ratio z axis
+        **
+        **
+        ** To be in this coordinate system:
+        ** Remider : we start from the schema 1 coordinate system
+        ** First : rotation of -90 degree on the x axis
+        **
+        **         0 +----------- 1    x axis
+        **          /|
+        **         / |
+        **        /  |
+        **    y axis |
+        **           |
+        **           1   z axis
+        **
+        ** Second : No translation needed here
+        ** Third : scale of 1 / aspect_ratio on z axis
+        **
+        **         0 +----------- 1    x axis
+        **          /|
+        **         / |
+        **        /  |
+        **   y axis  |
+        **           |
+        **   1 / aspect_ratio z axis
+        **
+        **
+        ** We don't need y axis so it's done.
+        */
+
+
+        static osg::Matrix iphone_transform(float aspect_ratio) {
+            return (osg::Matrix::rotate(osg::Quat(osg::DegreesToRadians(180.0), osg::Vec3(1, 0, 0))) *
+                    osg::Matrix::scale(2.0f * aspect_ratio, 2.0f, 1.0f));
+        }
+        /*
+        ** For iphone devices, the coordinate system is (origin at the center of the screen):
+        **
+        **                         1
+        **                         |
+        **                         |
+        **                         |
+        **                         |
+        **                         |
+        ** -aspect_ratio <---------+-----------> aspect_ratio    x axis
+        **                        0|
+        **                         |
+        **                         |
+        **                         |
+        **                         |
+        **                        -1  y axis
+        */
+    };
+};
+
+
+
+
+
+
+
+
+

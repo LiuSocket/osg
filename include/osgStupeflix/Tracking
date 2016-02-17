@@ -1,0 +1,40 @@
+#ifndef OSGSTUPEFLIX_TRACKING_PROXY
+#define OSGSTUPEFLIX_TRACKING_PROXY 1
+
+#include <cfloat>
+#include <osg/Uniform>
+#include <osg/ImageStreamProxy>
+#include <osg/MatrixTransform>
+#include <osgStupeflix/Tracker>
+#include <osgStupeflix/OpenCvTracker>
+#include <osgStupeflix/TrackingMatrixUtils>
+
+namespace osgStupeflix {
+    /*
+    ** Basic class which contain a vector of tracker
+    ** and give each new frame to them
+    */
+    class OSG_EXPORT Tracking : public osg::ImageProxyClient {
+        public:
+            Tracking();
+            virtual ~Tracking();
+            /*
+            ** Called by the ImageStreamProxy
+            ** Pass earch frame to trackers
+            */
+            virtual void newFrame(const unsigned char* data, unsigned int width, unsigned int height, double time);
+
+            void addTracker(osg::ref_ptr<osgStupeflix::Tracker> const &tracker);
+
+            /*
+            ** Reset Tracking by deleting all trackers
+            */
+            void reset();
+
+
+        protected:
+            std::vector<osg::ref_ptr<osgStupeflix::Tracker> > _trackers;
+    };
+}
+
+#endif

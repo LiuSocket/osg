@@ -1,0 +1,74 @@
+//
+//  CaptureCallBack.h
+//  StupeflixDemo
+//
+//  Created by Guenole on 08/10/2012.
+//  Copyright (c) 2012 Stupeflix. All rights reserved.
+//
+
+#ifndef __StupeflixDemo__CaptureCallBack__
+#define __StupeflixDemo__CaptureCallBack__
+
+#include <cstdio>
+#include <osg/Referenced>
+#include <osg/RenderInfo>
+
+#include <osgStupeflix/VideoBuffer>
+
+namespace osgStupeflix
+{
+    
+    class CaptureCallbackDelegate
+    {
+    public:
+        virtual VideoBuffer* getVideoBuffer() = 0;
+        virtual void didCaptureImage(){};
+    };
+
+
+    class CaptureCallback : public osg::Camera::DrawCallback
+    {
+    public:
+        // Context Data: handle on graphicsContext and imageBuffer. Reads osg buffer
+        struct ContextData : public osg::Referenced
+        {
+            ContextData(osg::GraphicsContext* graphicsContext, CaptureCallbackDelegate *delegate):
+            _graphicsContext(graphicsContext),
+            _width(0),
+            _height(0),
+            _delegate(delegate)
+            {
+                if(!graphicsContext->getTraits()) return;
+                _width = graphicsContext->getTraits()->width;
+                _height = graphicsContext->getTraits()->height;
+                _image = new osg::Image;
+
+                printf("Capture Size: (%d,%d)\n",_width,_height);
+
+            }
+
+            void readImage();
+            
+        protected:
+            osg::GraphicsContext* _graphicsContext;
+            int _width;
+            int _height;
+            osg::Image* _image;
+            CaptureCallbackDelegate *_delegate;
+        };
+        
+        // Constructor: NSObject for callback delegate calls
+        CaptureCallback(CaptureCallbackDelegate *delegate) : _delegate(delegate) {}
+        
+        // Callback: read image and post notification to delegate
+        virtual void operator () (osg::RenderInfo& renderInfo) const;        
+    protected:
+        typedef std::map<osg::GraphicsContext*, osg::ref_ptr<ContextData> > ContextDataMap;
+        mutable OpenThreads::Mutex _mutex;
+        mutable ContextDataMap _contextDataMap;
+        CaptureCallbackDelegate *_delegate;
+       
+    };
+}
+
+#endif /* defined(__StupeflixDemo__CaptureCallBack__) */

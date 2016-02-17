@@ -1,0 +1,124 @@
+#ifndef OSG_STUPEFLIX_INTERPOLATOR
+#define OSG_STUPEFLIX_INTERPOLATOR 1
+
+#include <osgAnimation/Interpolator>
+#include <osgStupeflix/Bezier>
+#include <osgStupeflix/VariableSpeedCubicBezier>
+
+
+#define TYPICAL_STEPS_NUMBER 200
+
+namespace osgAnimation
+{
+
+    // http://en.wikipedia.org/wiki/B%C3%A9zier_curve
+    template <class TYPE, class KEY=TYPE>
+    class TemplateEquiCubicBezierInterpolator : public TemplateInterpolatorBase<TYPE,KEY>
+    {
+    public:
+
+        TemplateEquiCubicBezierInterpolator():
+        _interpolator(NULL)
+
+        {
+            _interpolator = new osgStupeflix::EquiCubicBezierInterpolator<TYPE>(TYPE(), TYPE(), TYPE(), TYPE(), TYPICAL_STEPS_NUMBER);
+        }               
+        ~TemplateEquiCubicBezierInterpolator()
+        {
+            free(_interpolator);
+        }               
+
+        void getValue(const osgAnimation::TemplateKeyframeContainer<KEY>& keyframes, double time, TYPE& result) const
+        {
+
+            if (time >= keyframes.back().getTime())
+            {
+                result = keyframes.back().getValue().getPosition();
+                return;
+            }
+            else if (time <= keyframes.front().getTime())
+            {
+                result = keyframes.front().getValue().getPosition();
+                return;
+            }
+
+            int i = this->getKeyIndexFromTime(keyframes,time);
+
+            _interpolator->init(keyframes[i].getValue().getPosition(),
+                                keyframes[i].getValue().getControlPointOut(),
+                                keyframes[i+1].getValue().getControlPointIn(),
+                                keyframes[i+1].getValue().getPosition());
+
+            float t = (time - keyframes[i].getTime()) / ( keyframes[i+1].getTime() -  keyframes[i].getTime());
+            result = _interpolator->interpolate(t);
+
+        }
+      protected:
+        osgStupeflix::EquiCubicBezierInterpolator<TYPE>* _interpolator;
+        
+    };
+
+    typedef TemplateEquiCubicBezierInterpolator<float, FloatCubicBezier> FloatEquiCubicBezierInterpolator;
+    typedef TemplateEquiCubicBezierInterpolator<double, DoubleCubicBezier> DoubleEquiCubicBezierInterpolator;
+    typedef TemplateEquiCubicBezierInterpolator<osg::Vec2, Vec2CubicBezier> Vec2EquiCubicBezierInterpolator;
+    typedef TemplateEquiCubicBezierInterpolator<osg::Vec3, Vec3CubicBezier> Vec3EquiCubicBezierInterpolator;
+    typedef TemplateEquiCubicBezierInterpolator<osg::Vec4, Vec4CubicBezier> Vec4EquiCubicBezierInterpolator;
+
+
+    // http://en.wikipedia.org/wiki/B%C3%A9zier_curve
+    template <class TYPE, class KEY=TYPE>
+    class TemplateVariableSpeedCubicBezierInterpolator : public TemplateInterpolatorBase<TYPE,KEY>
+    {
+    public:
+
+        TemplateVariableSpeedCubicBezierInterpolator():
+        _interpolator(NULL)
+        {
+            _interpolator = new osgStupeflix::VariableSpeedCubicBezierInterpolator<TYPE>(TYPE(), TYPE(), TYPE(), TYPE(), 
+                                                                                         osg::Vec2(), osg::Vec2(),
+                                                                                         TYPICAL_STEPS_NUMBER, 1.0, -1);
+        }               
+        void getValue(const osgAnimation::TemplateKeyframeContainer<KEY>& keyframes, double time, TYPE& result) const
+        {
+
+            if (time >= keyframes.back().getTime())
+            {
+                result = keyframes.back().getValue().getPosition();
+                return;
+            }
+            else if (time <= keyframes.front().getTime())
+            {
+                result = keyframes.front().getValue().getPosition();
+                return;
+            }
+
+            int i = this->getKeyIndexFromTime(keyframes,time);
+            double duration = keyframes[i+1].getTime() -  keyframes[i].getTime();
+
+            _interpolator->init(keyframes[i].getValue().getPosition(),
+                                keyframes[i].getValue().getControlPointOut(),
+                                keyframes[i+1].getValue().getControlPointIn(),
+                                keyframes[i+1].getValue().getPosition(),                                   
+                                keyframes[i].getValue().getInfluenceSpeedOut(),
+                                keyframes[i+1].getValue().getInfluenceSpeedIn(),
+                                duration, 
+                                i);
+
+            float t = (time - keyframes[i].getTime()) / duration;
+            //            osg::notify(osg::NOTICE) << "time is " << t  << std::endl;
+            result = _interpolator->interpolate(t);
+        }
+      protected:
+        osgStupeflix::VariableSpeedCubicBezierInterpolator<TYPE>* _interpolator;
+        
+    };
+
+
+    typedef TemplateVariableSpeedCubicBezierInterpolator<float, FloatVariableSpeedCubicBezier> FloatVariableSpeedCubicBezierInterpolator;
+    typedef TemplateVariableSpeedCubicBezierInterpolator<double, DoubleVariableSpeedCubicBezier> DoubleVariableSpeedCubicBezierInterpolator;
+    typedef TemplateVariableSpeedCubicBezierInterpolator<osg::Vec2, Vec2VariableSpeedCubicBezier> Vec2VariableSpeedCubicBezierInterpolator;
+    typedef TemplateVariableSpeedCubicBezierInterpolator<osg::Vec3, Vec3VariableSpeedCubicBezier> Vec3VariableSpeedCubicBezierInterpolator;
+    typedef TemplateVariableSpeedCubicBezierInterpolator<osg::Vec4, Vec4VariableSpeedCubicBezier> Vec4VariableSpeedCubicBezierInterpolator;
+    
+}
+#endif

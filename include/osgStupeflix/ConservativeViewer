@@ -1,0 +1,43 @@
+/*  -*-c++-*-
+ *  Copyright (C) 2012 Stupeflix
+ *
+ * Authors:
+ *         Francois Lagunas <francois.lagunas@gmail.com>
+ */
+
+#ifndef OSGSTUPEFLIX_PREFETCHING_VIEWER
+#define OSGSTUPEFLIX_PREFETCHING_VIEWER 1
+
+#include <osgStupeflix/Export>
+#include <osgViewer/ViewerBase>
+#include <osgViewer/Viewer>
+
+
+
+namespace osgStupeflix
+{
+    class OSGSTUPEFLIX_EXPORT ConservativeViewer : public osgViewer::Viewer
+    {
+
+    public:
+        ConservativeViewer();        
+        bool frameAtTime(double simulationTime);
+
+        // Testing
+        bool fileDidNotExist() {
+            return _fileDidNotExist;
+        }
+        bool imageWasNotLoaded() {
+            return _imageWasNotLoaded;
+        }
+
+    protected:
+        void updateTimeGroups(double simulationTime);
+        bool readyCheck(double simulationTime);
+        bool _fileDidNotExist;
+        bool _imageWasNotLoaded;
+
+    };
+}
+
+#endif

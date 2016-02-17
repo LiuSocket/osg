@@ -1,0 +1,14 @@
+CC = ~/x-tools/gcc-linaro-aarch64-linux-gnu-4.8-2013.12_linux/bin/aarch64-linux-gnu-gcc
+AS = ~/x-tools/gcc-linaro-aarch64-linux-gnu-4.8-2013.12_linux/bin/aarch64-linux-gnu-as
+
+CFLAGS  += -Wall -Wextra -O2 -g
+LDFLAGS += -static
+
+NAME = resize_test
+all: $(NAME)
+$(NAME): $(NAME).o resize_armv8.o resize_ref.o main.o
+clean:
+	$(RM) *.o
+distclean: clean
+	$(RM) $(NAME)
+re: clean all

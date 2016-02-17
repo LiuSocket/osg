@@ -1,0 +1,47 @@
+#pragma once
+
+#include <cstddef>
+#include <cstdlib>
+#include <stdint.h>
+#include <osg/Referenced>
+#include <sys/types.h>
+
+
+namespace osgStupeflix 
+{
+
+    /*
+     * Video Buffer
+     */
+    class OSG_EXPORT VideoBuffer : public osg::Referenced 
+    {
+
+    public:
+      
+        VideoBuffer(int w, int h, void *data = NULL, size_t bpp = 4, ssize_t bpr = -1, bool copy = false);
+        virtual ~VideoBuffer();
+
+        int width() const { return _w; } 
+        int height() const { return _h; } 
+
+        void* data() const { return _data; }
+        
+        size_t bpr() const { return _bpr; }
+        size_t bpp() const { return _bpp; }
+        size_t dataSize() const { return _size; }
+
+        int pixelFormat;
+
+    private:
+
+        int _w, _h;
+
+        void *_data;    
+
+        size_t _bpp, _bpr;
+        size_t _size;
+          
+        bool _freeWhenDone;
+
+  };
+}

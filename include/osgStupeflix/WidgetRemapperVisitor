@@ -1,0 +1,61 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 1998-2006 Robert Osfield 
+ *
+ * This application is open source and may be redistributed and/or modified   
+ * freely and without restriction, both in commericial and non commericial applications,
+ * as long as this copyright notice is maintained.
+ * 
+ * This application is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*/
+
+#ifndef OSG_STUPEFLIX_WIDGETREMAPPER
+#define OSG_STUPEFLIX_WIDGETREMAPPER 1
+
+#include <osgStupeflix/Export>
+#include <osg/NodeVisitor>
+#include <osg/StateSet>
+
+namespace osgStupeflix {
+
+    class OSGSTUPEFLIX_EXPORT WidgetDurationFinder : public osg::NodeVisitor
+    {
+    public:
+        WidgetDurationFinder();
+        void apply(osg::Node& node);
+        inline float getDuration() {return _duration;};
+    protected:
+        float _duration;
+    };
+
+
+    class OSGSTUPEFLIX_EXPORT WidgetRemapperVisitor : public osg::NodeVisitor
+    {
+    public:
+        WidgetRemapperVisitor(float timeShift, float timeStretch, std::string pathPrefix, std::string suffix, std::vector<osg::StateSet*> statesets, std::vector<std::string> texts);
+        void apply(osg::StateSet* stateset);
+        void apply(osg::StateSet* stateset, bool fileremap);
+        void apply(osg::Node& node);
+        int getIndexFromName(std::string name, std::string prefix);
+    protected:
+
+        float _timeShift;
+        float _timeStretch;
+        std::string _pathPrefix;
+        std::string _suffix;
+        std::vector<osg::StateSet*> _statesets; 
+        std::vector<std::string> _texts;
+        float _currentStartTime;
+    };
+
+    void widgetRemap(osg::Node* node, 
+                     float startTime, 
+                     float duration, 
+                     std::string pathPrefix,
+                     std::string pathSuffix,
+                     std::vector<osg::StateSet*> statesets,
+                     std::vector<std::string> texts);
+
+}
+
+#endif

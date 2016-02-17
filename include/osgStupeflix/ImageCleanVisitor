@@ -1,0 +1,44 @@
+/*  -*-c++-*- 
+ *  Copyright (C) 2010 Stupeflix 
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ */
+
+#ifndef OSGSTUPEFLIX_CLEANVISITOR
+#define OSGSTUPEFLIX_CLEANVISITOR 1
+
+#include <osgStupeflix/Export>
+#include <osg/NodeVisitor>
+#include <osg/Texture2D>
+
+namespace osgStupeflix
+{
+    class OSGSTUPEFLIX_EXPORT ImageCleanVisitor : public osg::NodeVisitor
+    {
+    public:
+        ImageCleanVisitor();
+        void apply(osg::StateSet* stateset, std::string name);
+        void apply(osg::Node&);
+        
+    void cleanupFinish();
+    void setCurrentTime(double time);
+
+    protected:
+        bool _cleaning;
+        std::map<osg::Texture2D*, osg::Node::NodeMask> _textureStatus;
+    std::map<osg::Camera*, osg::Node::NodeMask> _cameraStatus;
+
+    void markTexture(osg::Texture2D* texture);
+    void markCamera(osg::Camera* camera);
+
+    void cleanupTexture(osg::Texture2D* texture);
+    void cleanupCamera(osg::Camera* camera);
+    double _time;
+    };
+
+
+}
+
+
+#endif

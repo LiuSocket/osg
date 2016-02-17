@@ -1,0 +1,61 @@
+/* -*-c++-*- OpenSceneGraph - Copyright (C) 1998-2006 Robert Osfield 
+ *
+ * This application is open source and may be redistributed and/or modified   
+ * freely and without restriction, both in commericial and non commericial applications,
+ * as long as this copyright notice is maintained.
+ * 
+ * This application is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+*/
+
+#ifndef OSG_STUPEFLIX_SCREEN_CAPTURE
+#define OSG_STUPEFLIX_SCREEN_CAPTURE 1
+
+#include <osgViewer/Viewer>
+
+namespace osgStupeflix {
+
+    class WindowCaptureCallbackImage : public osg::Camera::DrawCallback{
+    public:
+        WindowCaptureCallbackImage(osg::Image*, unsigned int);
+        std::string getImageData(unsigned int frame);
+        void operator () (osg::RenderInfo& renderInfo) const;
+    protected:
+        mutable unsigned int _frame;
+        osg::ref_ptr<osg::Image> _image;
+    };
+
+    class ScreenCapture
+    {
+    public:
+   
+        enum Mode
+        {
+            READ_PIXELS,
+            SINGLE_PBO,
+            DOUBLE_PBO,
+            TRIPLE_PBO
+        };
+    
+        enum FramePosition
+        {
+            START_FRAME,
+            END_FRAME
+        };
+    
+        ScreenCapture(unsigned int startFrame, osgViewer::Viewer *viewer);
+        //void install(osgViewer::ViewerBase& viewer, Mode mode, FramePosition position, GLenum readBuffer);
+        //void installToCamera(osg::Camera* camera, Mode mode, FramePosition position, GLenum readBuffer);
+        bool installToCamera(osg::Camera* camera, FramePosition position, bool display);
+        std::string getImageData(unsigned int frame);
+    
+protected:
+        osg::ref_ptr<WindowCaptureCallbackImage> _callback;
+        unsigned int _startFrame;
+        osgViewer::Viewer* _viewer;
+};
+
+}
+
+#endif

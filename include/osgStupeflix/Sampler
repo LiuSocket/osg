@@ -1,0 +1,41 @@
+/*  -*-c++-*-
+ *  Copyright (C) 2008 Cedric Pinson <cedric.pinson@plopbyte.net>
+ *
+ * This library is open source and may be redistributed and/or modified under
+ * the terms of the OpenSceneGraph Public License (OSGPL) version 0.0 or
+ * (at your option) any later version.  The full license is in LICENSE file
+ * included with this distribution, and on the openscenegraph.org website.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * OpenSceneGraph Public License for more details.
+ *
+ * Authors:
+ *         Cedric Pinson <cedric.pinson@plopbyte.net>
+ *         Michael Platings <mplatings@pixelpower.com>
+ */
+
+#ifndef OSGSTUPEFLIX_SAMPLER
+#define OSGSTUPEFLIX_SAMPLER 1
+
+#include <osgAnimation/Sampler>
+#include <osgStupeflix/Interpolator>
+
+namespace osgAnimation
+{
+    typedef TemplateSampler<FloatEquiCubicBezierInterpolator> FloatEquiCubicBezierSampler;
+    typedef TemplateSampler<DoubleEquiCubicBezierInterpolator> DoubleEquiCubicBezierSampler;
+    typedef TemplateSampler<Vec2EquiCubicBezierInterpolator> Vec2EquiCubicBezierSampler;
+    typedef TemplateSampler<Vec3EquiCubicBezierInterpolator> Vec3EquiCubicBezierSampler;
+    typedef TemplateSampler<Vec4EquiCubicBezierInterpolator> Vec4EquiCubicBezierSampler;
+
+    typedef TemplateSampler<FloatVariableSpeedCubicBezierInterpolator> FloatVariableSpeedCubicBezierSampler;
+    typedef TemplateSampler<DoubleVariableSpeedCubicBezierInterpolator> DoubleVariableSpeedCubicBezierSampler;
+    typedef TemplateSampler<Vec2VariableSpeedCubicBezierInterpolator> Vec2VariableSpeedCubicBezierSampler;
+    typedef TemplateSampler<Vec3VariableSpeedCubicBezierInterpolator> Vec3VariableSpeedCubicBezierSampler;
+    typedef TemplateSampler<Vec4VariableSpeedCubicBezierInterpolator> Vec4VariableSpeedCubicBezierSampler;
+
+}
+
+#endif
